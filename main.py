@@ -32,9 +32,6 @@ Y = (10 * np.sin(np.pi * X[:, 0] * X[:, 1]) + 20 * (X[:, 2] - .5) ** 2 +
      10 * X[:, 3] + 5 * X[:, 4] ** 5 + np.random.normal(0, 1))
 X[:, 10:] = X[:, :4] + np.random.normal(0, .025, (size, 4))
 
-print(X)
-print("")
-print(Y)
 lr = Lasso(alpha=0.1)
 lr.fit(X, Y)
 
