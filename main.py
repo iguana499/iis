@@ -1,47 +1,38 @@
-import numpy as np
 import pandas as pd
-import math
-import matplotlib.pyplot as plt
-import matplotlib
-from matplotlib import colors
-from sklearn.cluster import DBSCAN
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
 
-np.random.seed(42)
+metadata = pd.read_csv('recomend.csv', low_memory=False)
 
+tfidf = TfidfVectorizer(stop_words='english')
+tfidf_matrix = tfidf.fit_transform(metadata['rating'])
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
-# Function for creating datapoints in the form of a circle
-def PointsInCircum(r, n=100):
-    return [(math.cos(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
-             math.sin(2 * math.pi / n * x) * r + np.random.normal(-30, 30)) for x in range(1, n + 1)]
+indices = pd.Series(metadata.index, index=metadata['name'])
 
 
-# Creating data points in the form of a circle
-df = pd.DataFrame(PointsInCircum(500, 1000))
-df = df.append(PointsInCircum(300, 700))
-df = df.append(PointsInCircum(100, 300))
+def get_recommendations(title, cosine_sim=cosine_sim):
+    idx = indices[title]
 
-# Adding noise to the dataset
-df = df.append([(np.random.randint(-600, 600), np.random.randint(-600, 600)) for i in range(300)])
+    sim_scores = list(enumerate(cosine_sim[idx]))
 
-plt.figure(figsize=(10, 10))
-plt.scatter(df[0], df[1], s=15, color='grey')
-plt.title('Dataset', fontsize=20)
-plt.xlabel('Feature 1', fontsize=14)
-plt.ylabel('Feature 2', fontsize=14)
-plt.show()
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
 
-dbscan_opt = DBSCAN(eps=30, min_samples=6)
-dbscan_opt.fit(df[[0, 1]])
+    sim_scores = sim_scores[1:5]
 
-df['DBSCAN_opt_labels'] = dbscan_opt.labels_
-df['DBSCAN_opt_labels'].value_counts()
+    movie_indices = [i[0] for i in sim_scores]
 
-dbscan=DBSCAN()
-dbscan.fit(df[[0,1]])
+    return metadata['name'].iloc[movie_indices], metadata['year'].iloc[movie_indices]
 
-plt.figure(figsize=(10, 10))
-plt.scatter(df[0], df[1], c=df['DBSCAN_opt_labels'], cmap=matplotlib.colors.ListedColormap(["darkorange", "gold", "lawngreen", "lightseagreen"]), s=15)
-plt.title('DBSCAN Clustering', fontsize=20)
-plt.xlabel('Feature 1', fontsize=14)
-plt.ylabel('Feature 2', fontsize=14)
-plt.show()
+
+names, practice = get_recommendations('john')
+
+a = dict(zip(names, practice))
+
+sorted_dict = {}
+sorted_keys = sorted(a, key=a.get)  # [1, 3, 2]
+
+for w in sorted_keys:
+    sorted_dict[w] = a[w]
+
+print(sorted_dict)
