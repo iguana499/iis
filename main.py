@@ -1,51 +1,47 @@
-from sklearn.feature_selection import RFE
-from sklearn.linear_model import Lasso
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.feature_selection import f_regression
 import numpy as np
+import pandas as pd
+import math
+import matplotlib.pyplot as plt
+import matplotlib
+from matplotlib import colors
+from sklearn.cluster import DBSCAN
+
+np.random.seed(42)
 
 
-def rank_to_dict(ranks, names):
-    ranks = np.abs(ranks)
-    minmax = MinMaxScaler()
-    ranks = minmax.fit_transform(np.array(ranks).reshape(14, 1)).ravel()
-    ranks = map(lambda x: round(x, 2), ranks)
-    return dict(zip(names, ranks))
+# Function for creating datapoints in the form of a circle
+def PointsInCircum(r, n=100):
+    return [(math.cos(2 * math.pi / n * x) * r + np.random.normal(-30, 30),
+             math.sin(2 * math.pi / n * x) * r + np.random.normal(-30, 30)) for x in range(1, n + 1)]
 
 
-def sort_data(dict1):
-    sorted_values = sorted(dict1.values())
-    sorted_dict = {}
+# Creating data points in the form of a circle
+df = pd.DataFrame(PointsInCircum(500, 1000))
+df = df.append(PointsInCircum(300, 700))
+df = df.append(PointsInCircum(100, 300))
 
-    for i in sorted_values:
-        for k in dict1.keys():
-            if dict1[k] == i:
-                sorted_dict[k] = dict1[k]
-                break
-    return sorted_dict
+# Adding noise to the dataset
+df = df.append([(np.random.randint(-600, 600), np.random.randint(-600, 600)) for i in range(300)])
 
+plt.figure(figsize=(10, 10))
+plt.scatter(df[0], df[1], s=15, color='grey')
+plt.title('Dataset', fontsize=20)
+plt.xlabel('Feature 1', fontsize=14)
+plt.ylabel('Feature 2', fontsize=14)
+plt.show()
 
-np.random.seed(0)
-size = 750
-X = np.random.uniform(0, 1, (size, 14))
-Y = (10 * np.sin(np.pi * X[:, 0] * X[:, 1]) + 20 * (X[:, 2] - .5) ** 2 +
-     10 * X[:, 3] + 5 * X[:, 4] ** 5 + np.random.normal(0, 1))
-X[:, 10:] = X[:, :4] + np.random.normal(0, .025, (size, 4))
+dbscan_opt = DBSCAN(eps=30, min_samples=6)
+dbscan_opt.fit(df[[0, 1]])
 
-lr = Lasso(alpha=0.1)
-lr.fit(X, Y)
+df['DBSCAN_opt_labels'] = dbscan_opt.labels_
+df['DBSCAN_opt_labels'].value_counts()
 
-rfe = RFE(lr)
-rfe.fit(X, Y)
+dbscan=DBSCAN()
+dbscan.fit(df[[0,1]])
 
-f_regression = f_regression(X, Y)
-f_regression = f_regression[0]
-
-
-names = ["x%s" % i for i in range(1, 15)]
-rank = [rank_to_dict(lr.coef_, names),
-        rank_to_dict(f_regression, names),
-        rank_to_dict(rfe.support_, names)]
-
-for i in range(len(rank)):
-    print(sort_data(rank[i]))
+plt.figure(figsize=(10, 10))
+plt.scatter(df[0], df[1], c=df['DBSCAN_opt_labels'], cmap=matplotlib.colors.ListedColormap(["darkorange", "gold", "lawngreen", "lightseagreen"]), s=15)
+plt.title('DBSCAN Clustering', fontsize=20)
+plt.xlabel('Feature 1', fontsize=14)
+plt.ylabel('Feature 2', fontsize=14)
+plt.show()
